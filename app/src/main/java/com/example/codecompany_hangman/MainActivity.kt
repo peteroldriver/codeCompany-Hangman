@@ -4,6 +4,7 @@ import android.media.Image
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
+import android.util.Pair
 import android.view.View
 import android.widget.Button
 import android.widget.ImageView
@@ -17,7 +18,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var curquestion: String
     private lateinit var word: TextView
     private lateinit var hint: TextView
-    private var hintCnt: Int = 0
+    private var hintCnt: Int = -1
     private var hangingTime: Int = 0
     val Buttons = listOf(
         R.id.a, R.id.b, R.id.c, R.id.d, R.id.e,
@@ -44,7 +45,7 @@ class MainActivity : AppCompatActivity() {
         question = pair.first
         questionhint = pair.second
         curquestion = getCurrentQ(question, "")
-
+        Log.d("TAG", "On Create 1 -> Hint Count: $hintCnt")
 
         // List of all button IDs
 
@@ -57,6 +58,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         updateWord()
+        Log.d("TAG", "On Create2 -> Hint Count: $hintCnt")
 
     }
     fun newGame() {
@@ -65,7 +67,7 @@ class MainActivity : AppCompatActivity() {
         questionhint = pair.second
         curquestion = getCurrentQ(question, "")
         lettersUsed = ""
-        hintCnt = 0
+        hintCnt = -1
         hangingTime = 0
         updateWord()
         updateHint("")
@@ -79,7 +81,7 @@ class MainActivity : AppCompatActivity() {
         gameImage.setImageResource(R.drawable.game0)
     }
 
-    fun getQuestion():Pair<String, String>{
+    fun getQuestion(): Pair<String, String> {
         val random = (0 until Questions.words.size).random()
         val question = Questions.words[random]
         val questionhint = Questions.hints[random]
@@ -117,8 +119,8 @@ class MainActivity : AppCompatActivity() {
             }
 
             R.id.hintbutton -> {
-                getHint(hintCnt)
                 hintCnt++
+                getHint(hintCnt)
             }
 
             else -> {
@@ -140,6 +142,7 @@ class MainActivity : AppCompatActivity() {
 //        Toast.makeText(this, "Letter: " + (view as Button).text, Toast.LENGTH_SHORT).show()
         val letter = (view as Button).text
         if (!question.contains(letter, ignoreCase = true)) {
+            hangingTime++
             hang()
         }
         curquestion = getCurrentQ(question, lettersUsed)
@@ -163,11 +166,14 @@ class MainActivity : AppCompatActivity() {
     fun updateHint(inputText: String) {
         hint = findViewById(R.id.hinttext)
         hint.text = inputText
+        Log.d("TAG", "Hint Message Displayed.")
     }
 
     fun getHint(hintCnt: Int) {
         // switch case
+        Log.d("TAG", "Get Hine Fun -> Hint Count: $hintCnt")
         when (hintCnt) {
+            -1 -> {return}
             0 -> {
                 updateHint(questionhint)
             }
@@ -190,6 +196,11 @@ class MainActivity : AppCompatActivity() {
                         if (cur_button.isEnabled) {
                             disableButton(cur_button)
                             remaining--
+                            var tmp = cur_button.text.toString()
+                            if(question.contains(tmp, ignoreCase = true)){
+                                curquestion = getCurrentQ(question, lettersUsed)
+                                updateWord()
+                            }
                         }
                     }
                 }
@@ -198,6 +209,7 @@ class MainActivity : AppCompatActivity() {
             2 -> {
                 if (checkHangingTime()) {
                     hang()
+                    hangingTime++
                     val vowelButton = listOf(
                         R.id.a, R.id.e, R.id.i, R.id.o, R.id.u
                     )
@@ -223,7 +235,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun hang() {
-        hangingTime++
         // update image
         // Construct the image name dynamically
         var imageName = "game" + hangingTime + ".png"
@@ -263,8 +274,59 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onSaveInstanceState(savedInstanceState: Bundle) {
+        super.onSaveInstanceState(savedInstanceState)
+        savedInstanceState.putString("question", question)
+        savedInstanceState.putString("questionHint", questionhint)
+        savedInstanceState.putInt("hangTime", hangingTime)
+        savedInstanceState.putInt("hintCount", hintCnt)
+        Log.d("TAG", "Save Time -> Hint Count: $hintCnt")
+        savedInstanceState.putString("word", curquestion)
+        savedInstanceState.putString("letterused", lettersUsed)
+        var disableButtons = BooleanArray(27);
+        for ((index, button) in diableButtons.withIndex()) {
+            if(findViewById<Button>(button).isEnabled){
+                disableButtons[index] = true
+            }
+        }
+        savedInstanceState.putBooleanArray("disableButtons", disableButtons)
+
+    }
+
+    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
+        super.onRestoreInstanceState(savedInstanceState);
+        //restore question
+        lettersUsed = savedInstanceState.getString("letterused").toString()
+        question = savedInstanceState.getString("question").toString()
+        questionhint = savedInstanceState.getString("questionHint").toString()
+        curquestion = savedInstanceState.getString("word").toString()
+        // Read the state of textview
+        hangingTime = savedInstanceState.getInt("hangTime");
+        hang()
+
+        //restore hint
+        hintCnt = savedInstanceState.getInt("hintCount")
+        Log.d("TAG", "Restore Time -> Hint Count: $hintCnt")
+        getHint(hintCnt)
+
+
+        var disableButtons = savedInstanceState.getBooleanArray("disableButtons")
+        for ((index, button) in diableButtons.withIndex()) {
+            if(disableButtons?.get(index) == false){
+                findViewById<Button>(button).isEnabled = false
+            }
+        }
+        word.text = curquestion
+        if (hangingTime > 5) {
+            GameLost()
+        }
+
+        if(!curquestion.contains("_")){
+            GameWon()
+        }
+    }
+
 
 }
-
 
 
