@@ -1,5 +1,7 @@
 package com.example.codecompany_hangman
 
+import android.content.res.Configuration
+import android.graphics.drawable.GradientDrawable.Orientation
 import android.media.Image
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
@@ -20,6 +22,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var hint: TextView
     private var hintCnt: Int = -1
     private var hangingTime: Int = 0
+    lateinit var result: TextView
     val Buttons = listOf(
         R.id.a, R.id.b, R.id.c, R.id.d, R.id.e,
         R.id.f, R.id.g, R.id.h, R.id.i, R.id.j,
@@ -27,6 +30,14 @@ class MainActivity : AppCompatActivity() {
         R.id.p, R.id.q, R.id.r, R.id.s, R.id.t,
         R.id.u, R.id.v, R.id.w, R.id.x, R.id.y,
         R.id.z, R.id.newgame, R.id.hintbutton
+    )
+    val Buttons2 = listOf(
+        R.id.a, R.id.b, R.id.c, R.id.d, R.id.e,
+        R.id.f, R.id.g, R.id.h, R.id.i, R.id.j,
+        R.id.k, R.id.l, R.id.m, R.id.n, R.id.o,
+        R.id.p, R.id.q, R.id.r, R.id.s, R.id.t,
+        R.id.u, R.id.v, R.id.w, R.id.x, R.id.y,
+        R.id.z, R.id.newgame
     )
     val diableButtons = listOf(
         R.id.a, R.id.b, R.id.c, R.id.d, R.id.e,
@@ -50,16 +61,34 @@ class MainActivity : AppCompatActivity() {
         // List of all button IDs
 
         // Setting the same click listener for all buttons
-        Buttons.forEach { button ->
+        Buttons2.forEach { button ->
             findViewById<Button>(button).setOnClickListener { view ->
                 // Handle the button click
                 onButtonClick(view)
             }
         }
 
+        if(checkOrientation(resources.configuration) == "Landscape"){
+            findViewById<Button>(R.id.hintbutton).setOnClickListener { view ->
+                // Handle the button click
+                onButtonClick(view)
+            }
+        }
+        else{
+            result = findViewById<TextView>(R.id.result)
+        }
+
         updateWord()
         Log.d("TAG", "On Create2 -> Hint Count: $hintCnt")
 
+    }
+
+    fun checkOrientation(configuration: Configuration): String {
+        return when (configuration.orientation) {
+            Configuration.ORIENTATION_LANDSCAPE -> "Landscape"
+            Configuration.ORIENTATION_PORTRAIT -> "Portrait"
+            else -> "Undefined"
+        }
     }
     fun newGame() {
         val pair= getQuestion()
@@ -74,11 +103,16 @@ class MainActivity : AppCompatActivity() {
 
         // Enable all buttons
         for (button in diableButtons) {
+            if(findViewById<Button>(button) != null){
             findViewById<Button>(button).isEnabled = true
-        }
+        }}
         // Reset the image
         gameImage = findViewById(R.id.gameimage)
         gameImage.setImageResource(R.drawable.game0)
+
+        if(findViewById<TextView>(R.id.result) != null){
+            result.text = ""
+        }
     }
 
     fun getQuestion(): Pair<String, String> {
@@ -164,6 +198,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun updateHint(inputText: String) {
+        if(checkOrientation(resources.configuration) =="Portrait"){
+            Log.d("TAG", "updateHint: No Hint Should be displayed")
+            return;
+        }
         hint = findViewById(R.id.hinttext)
         hint.text = inputText
         Log.d("TAG", "Hint Message Displayed.")
@@ -192,15 +230,12 @@ class MainActivity : AppCompatActivity() {
                 // iterate through button list and disable half of the remaining letters
                 for (button in letterButton) {
                     var cur_button = findViewById<Button>(button)
+                    var tmp = cur_button.text.toString()
                     if (remaining > 0) {
-                        if (cur_button.isEnabled) {
+                        if (cur_button.isEnabled &&  (!question.contains(tmp, ignoreCase = true))){
                             disableButton(cur_button)
                             remaining--
-                            var tmp = cur_button.text.toString()
-                            if(question.contains(tmp, ignoreCase = true)){
-                                curquestion = getCurrentQ(question, lettersUsed)
-                                updateWord()
-                            }
+
                         }
                     }
                 }
@@ -208,8 +243,9 @@ class MainActivity : AppCompatActivity() {
 
             2 -> {
                 if (checkHangingTime()) {
-                    hang()
                     hangingTime++
+                    hang()
+
                     val vowelButton = listOf(
                         R.id.a, R.id.e, R.id.i, R.id.o, R.id.u
                     )
@@ -217,6 +253,11 @@ class MainActivity : AppCompatActivity() {
                         var cur_button = findViewById<Button>(button)
                         if (cur_button.isEnabled) {
                             disableButton(cur_button)
+                            var tmp = cur_button.text.toString()
+                            if(question.contains(tmp, ignoreCase = true)){
+                                curquestion = getCurrentQ(question, lettersUsed)
+                                updateWord()
+                            }
                         }
                     }
                 } else {
@@ -257,20 +298,35 @@ class MainActivity : AppCompatActivity() {
         // change the word to the correct answer
         curquestion = question
         updateWord()
-        updateHint("YOU LOST!")
+        if(checkOrientation(resources.configuration) == "Landscape"){
+            updateHint("YOU LOST!")
+        }
+        else{
+            result.text = "YOU LOST!"
+        }
         // Disable all buttons
         for (button in diableButtons) {
-            findViewById<Button>(button).isEnabled = false
+            if(findViewById<Button>(button) != null) {
+                findViewById<Button>(button).isEnabled = false
+            }
         }
     }
 
     fun GameWon() {
         // Display a message to the user
 //        Toast.makeText(this, "You won!", Toast.LENGTH_SHORT).show()
-        updateHint("YOU WON!")
+
+        if(checkOrientation(resources.configuration) == "Landscape"){
+            updateHint("YOU WON!")
+        }
+        else{
+            result.text = "YOU WON!"
+        }
         // Disable all buttons
         for (button in diableButtons) {
-            findViewById<Button>(button).isEnabled = false
+            if(findViewById<Button>(button) != null) {
+                findViewById<Button>(button).isEnabled = false
+            }
         }
     }
 
@@ -285,10 +341,16 @@ class MainActivity : AppCompatActivity() {
         savedInstanceState.putString("letterused", lettersUsed)
         var disableButtons = BooleanArray(27);
         for ((index, button) in diableButtons.withIndex()) {
-            if(findViewById<Button>(button).isEnabled){
+            if(findViewById<Button>(button) == null){
+                if(hintCnt < 2){
+                    disableButtons[index] = true
+                }
+            }
+            else if(findViewById<Button>(button).isEnabled){
                 disableButtons[index] = true
             }
         }
+
         savedInstanceState.putBooleanArray("disableButtons", disableButtons)
 
     }
@@ -313,20 +375,22 @@ class MainActivity : AppCompatActivity() {
         var disableButtons = savedInstanceState.getBooleanArray("disableButtons")
         for ((index, button) in diableButtons.withIndex()) {
             if(disableButtons?.get(index) == false){
-                findViewById<Button>(button).isEnabled = false
+                if(findViewById<Button>(button) != null){
+                    findViewById<Button>(button).isEnabled = false
+                }
             }
         }
         word.text = curquestion
+
         if (hangingTime > 5) {
             GameLost()
         }
 
-        if(!curquestion.contains("_")){
+        else if(!curquestion.contains("_")){
             GameWon()
         }
     }
 
 
 }
-
 
